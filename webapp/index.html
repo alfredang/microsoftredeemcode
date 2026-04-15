@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MS Course Redeem Finder — Singapore</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="backdrop" aria-hidden="true"></div>
+
+    <main class="shell">
+      <header class="hero">
+        <span class="eyebrow">Microsoft Learn · Singapore partner</span>
+        <h1>MS Course Redeem Finder</h1>
+        <p class="sub">
+          Search the April 2026 Title Plan, open the Singapore-tracked course page,
+          and request achievement codes directly from Microsoft Learn.
+        </p>
+      </header>
+
+      <section id="auth-bar" class="auth-bar" aria-live="polite">
+        <span id="auth-dot" class="dot dot-off" aria-hidden="true"></span>
+        <span id="auth-text">Checking session…</span>
+        <button id="login-btn" class="btn btn-ghost" type="button" hidden>
+          Sign in to Microsoft
+        </button>
+      </section>
+
+      <section class="search" role="search">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            d="M10 18a8 8 0 1 1 5.3-2l4.4 4.4"
+          />
+        </svg>
+        <input
+          id="q"
+          type="search"
+          autocomplete="off"
+          spellcheck="false"
+          autofocus
+          placeholder="Search by course number or title…"
+          aria-label="Search courses"
+        />
+        <kbd class="hint">type to filter</kbd>
+      </section>
+
+      <div id="status" class="status" aria-live="polite"></div>
+
+      <section id="results" class="results" aria-label="Course results"></section>
+
+      <template id="card-template">
+        <article class="card">
+          <div class="card-top">
+            <span class="chip course-number"></span>
+            <span class="meta area"></span>
+          </div>
+          <h2 class="title"></h2>
+          <div class="meta-row">
+            <span class="pill duration"></span>
+            <span class="pill credential"></span>
+          </div>
+          <div class="actions">
+            <a class="btn btn-primary open-link" target="_blank" rel="noopener">
+              Open Singapore course page
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M7 17 17 7M9 7h8v8"
+                />
+              </svg>
+            </a>
+            <button class="btn btn-ghost copy-link" type="button">Copy link</button>
+          </div>
+
+          <div class="gen-row">
+            <div class="stepper" role="group" aria-label="Number of students">
+              <svg class="stepper-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4zM8 13a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm8 1c-3 0-6 1.5-6 4.5V20h12v-1.5c0-3-3-4.5-6-4.5zM8 14c-2.5 0-5 1.2-5 3.8V20h5"
+                />
+              </svg>
+              <div class="stepper-body">
+                <span class="stepper-label">Students redeeming this code</span>
+                <div class="stepper-controls">
+                  <button class="stepper-btn stepper-minus" type="button" aria-label="Decrease">–</button>
+                  <input
+                    class="gen-students stepper-input"
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value="1"
+                    inputmode="numeric"
+                    aria-label="Number of students"
+                  />
+                  <button class="stepper-btn stepper-plus" type="button" aria-label="Increase">+</button>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-accent gen-btn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 3v5M12 21v-5M3 12h5M21 12h-5M5.6 5.6l3.5 3.5M18.4 18.4l-3.5-3.5M5.6 18.4l3.5-3.5M18.4 5.6l-3.5 3.5"
+                />
+              </svg>
+              Generate achievement code
+            </button>
+          </div>
+
+          <div class="gen-status" hidden></div>
+          <ul class="code-list" hidden></ul>
+        </article>
+      </template>
+
+      <footer class="foot">
+        Generated from <code>titleplan_april10_2026.xlsx</code> · ocid=5238477 ·
+        Singapore partner campaign
+      </footer>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

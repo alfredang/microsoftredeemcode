@@ -1,0 +1,32 @@
+# --- Secrets and generated artifacts (never commit) -------------------------
+# Saved Playwright session — contains Microsoft auth cookies.
+webapp/data/storage_state.json
+# Generated achievement codes.
+webapp/data/codes.csv
+# Debug screenshots and captured HTML.
+webapp/data/debug/
+
+# --- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.env
+
+# --- Editor / OS ------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Node (unused but kept in case Node backend is added later) -------------
+node_modules/
+
+# --- xlsx internals (accidentally extracted in-place) -----------------------
+/\[Content_Types\].xml
+/_rels/
+/customXml/
+/docMetadata/
+/docProps/
+/xl/
