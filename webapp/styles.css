@@ -592,6 +592,17 @@ body.no-backend .code-list {
   font-size: 12px;
 }
 
+.foot-powered {
+  margin-top: 6px;
+}
+.foot-powered a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.foot-powered a:hover {
+  text-decoration: underline;
+}
+
 .foot code {
   font-family: "SF Mono", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
   font-size: 11px;
