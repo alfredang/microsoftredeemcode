@@ -5,14 +5,10 @@ const DEBOUNCE_MS = 120;
 const $q = document.getElementById("q");
 const $results = document.getElementById("results");
 const $status = document.getElementById("status");
-const $authDot = document.getElementById("auth-dot");
-const $authText = document.getElementById("auth-text");
-const $loginBtn = document.getElementById("login-btn");
 const template = document.getElementById("card-template");
 
 let courses = [];
 let debounceId = 0;
-let signedIn = false;
 let backendAvailable = false;
 
 function singaporeUrl(baseUrl) {
@@ -92,14 +88,23 @@ function renderCard(course) {
 }
 
 async function handleGenerate({ course, genBtn, genStudents, genStatus, codeList }) {
-  if (!signedIn) {
-    setStatus(genStatus, "Sign in to Microsoft first (top of the page).", "err");
+  if (!backendAvailable) {
+    setStatus(genStatus, "Code generation requires running python server.py locally.", "err");
     return;
   }
+
   const students = Math.max(1, Math.min(1000, parseInt(genStudents.value, 10) || 1));
   genBtn.disabled = true;
   const originalLabel = genBtn.textContent;
   genBtn.textContent = "Generating…";
+
+  const loggedIn = await ensureSignedIn(genStatus);
+  if (!loggedIn) {
+    genBtn.disabled = false;
+    genBtn.textContent = originalLabel;
+    return;
+  }
+
   setStatus(
     genStatus,
     `Requesting an achievement code for ${students} student${students === 1 ? "" : "s"}…`,
@@ -256,61 +261,30 @@ function onInput() {
   debounceId = setTimeout(() => render($q.value), DEBOUNCE_MS);
 }
 
-async function refreshAuth() {
+async function checkBackend() {
   try {
     const res = await fetch("/api/status");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
     backendAvailable = true;
-    signedIn = !!data.signedIn;
   } catch {
     backendAvailable = false;
-    signedIn = false;
-  }
-
-  if (!backendAvailable) {
-    $authDot.className = "dot dot-off";
-    $authText.innerHTML =
-      "Code generation runs locally. Clone the repo and run " +
-      "<code>python server.py</code> to enable it. " +
-      "<a href='https://github.com/alfredang/microsoftredeemcode#code-generation' " +
-      "target='_blank' rel='noopener'>Setup guide</a>.";
-    $loginBtn.hidden = true;
     document.body.classList.add("no-backend");
-    return;
-  }
-
-  document.body.classList.remove("no-backend");
-  if (signedIn) {
-    $authDot.className = "dot dot-on";
-    $authText.textContent = "Signed in to Microsoft Learn. Ready to generate codes.";
-    $loginBtn.hidden = true;
-  } else {
-    $authDot.className = "dot dot-off";
-    $authText.textContent = "Not signed in. Sign in once to enable code generation.";
-    $loginBtn.hidden = false;
   }
 }
 
-async function handleLogin() {
-  $loginBtn.disabled = true;
-  const original = $loginBtn.textContent;
-  $loginBtn.textContent = "Opening browser…";
-  $authText.textContent =
-    "A browser window will open. Sign in with your MCT account, then return here.";
-  try {
-    const res = await fetch("/api/login", { method: "POST" });
-    const data = await res.json();
-    if (!data.ok) {
-      $authText.textContent = data.error || "Login did not complete.";
-    }
-  } catch (err) {
-    $authText.textContent = `Login failed: ${err.message}`;
-  } finally {
-    $loginBtn.disabled = false;
-    $loginBtn.textContent = original;
-    refreshAuth();
+async function ensureSignedIn(genStatus) {
+  const res = await fetch("/api/status");
+  const data = await res.json();
+  if (data.signedIn) return true;
+
+  setStatus(genStatus, "Signing in to Microsoft Learn…");
+  const loginRes = await fetch("/api/login", { method: "POST" });
+  const loginData = await loginRes.json();
+  if (!loginData.ok) {
+    setStatus(genStatus, `Auto sign-in failed: ${loginData.error}`, "err");
+    return false;
   }
+  return true;
 }
 
 async function boot() {
@@ -331,9 +305,8 @@ async function boot() {
     return;
   }
   $q.addEventListener("input", onInput);
-  $loginBtn.addEventListener("click", handleLogin);
   render("");
-  refreshAuth();
+  checkBackend();
 }
 
 boot();
