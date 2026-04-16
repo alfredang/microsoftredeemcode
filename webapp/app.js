@@ -268,7 +268,6 @@ async function checkBackend() {
     backendAvailable = true;
   } catch {
     backendAvailable = false;
-    document.body.classList.add("no-backend");
   }
 }
 

@@ -127,13 +127,6 @@ body {
   text-decoration-color: rgba(158, 195, 255, 0.4);
 }
 
-/* Hide code-generation controls when no Python backend is reachable
-   (e.g. when served statically from GitHub Pages). */
-body.no-backend .gen-row,
-body.no-backend .gen-status,
-body.no-backend .code-list {
-  display: none !important;
-}
 
 .dot {
   width: 8px;
