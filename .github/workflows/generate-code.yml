@@ -26,7 +26,7 @@ jobs:
           COURSE_URL: ${{ github.event.client_payload.courseUrl }}
           STUDENTS: ${{ github.event.client_payload.students }}
           REQUEST_ID: ${{ github.event.client_payload.requestId }}
-          STORAGE_STATE_PATH: ${{ github.workspace }}/../../../microsoftcert/webapp/data/storage_state.json
+          STORAGE_STATE_PATH: C:/Users/ADMIN/Desktop/microsoftcert/webapp/data/storage_state.json
         run: python .github/scripts/generate_code_action.py
 
       - name: Upload debug screenshots
