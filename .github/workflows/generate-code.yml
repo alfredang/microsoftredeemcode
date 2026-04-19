@@ -1,0 +1,49 @@
+name: Generate Achievement Code
+
+on:
+  repository_dispatch:
+    types: [generate-code]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install playwright python-dotenv
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Generate achievement code
+        env:
+          MS_EMAIL: ${{ secrets.MS_EMAIL }}
+          MS_PASSWORD: ${{ secrets.MS_PASSWORD }}
+          COURSE_NUMBER: ${{ github.event.client_payload.courseNumber }}
+          COURSE_URL: ${{ github.event.client_payload.courseUrl }}
+          STUDENTS: ${{ github.event.client_payload.students }}
+          REQUEST_ID: ${{ github.event.client_payload.requestId }}
+        run: python .github/scripts/generate_code_action.py
+
+      - name: Publish result to main branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p webapp/results
+          cp /tmp/result.json webapp/results/${{ github.event.client_payload.requestId }}.json
+          git add webapp/results/
+          git commit -m "result: ${{ github.event.client_payload.requestId }}"
+          git push

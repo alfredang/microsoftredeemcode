@@ -1,6 +1,10 @@
 const SG_SUFFIX = "?WT.mc_id=ilt_partner_webpage_wwl&ocid=5238477";
 const MAX_VISIBLE = 50;
 const DEBOUNCE_MS = 120;
+const GITHUB_REPO = "alfredang/microsoftredeemcode";
+const RAW_BASE = "https://raw.githubusercontent.com/alfredang/microsoftredeemcode/main/webapp";
+const POLL_INTERVAL = 5000;
+const POLL_TIMEOUT = 180000;
 
 const $q = document.getElementById("q");
 const $results = document.getElementById("results");
@@ -10,6 +14,7 @@ const template = document.getElementById("card-template");
 let courses = [];
 let debounceId = 0;
 let backendAvailable = false;
+let githubToken = localStorage.getItem("gh_pat") || "";
 
 function singaporeUrl(baseUrl) {
   return baseUrl + SG_SUFFIX;
@@ -88,12 +93,17 @@ function renderCard(course) {
 }
 
 async function handleGenerate({ course, genBtn, genStudents, genStatus, codeList }) {
-  if (!backendAvailable) {
-    setStatus(genStatus, "Code generation requires running python server.py locally.", "err");
-    return;
-  }
-
   const students = Math.max(1, Math.min(1000, parseInt(genStudents.value, 10) || 1));
+
+  // Use local backend if available, otherwise use GitHub Actions
+  if (backendAvailable) {
+    await handleGenerateLocal({ course, genBtn, genStudents, genStatus, codeList, students });
+  } else {
+    await handleGenerateGitHub({ course, genBtn, genStatus, codeList, students });
+  }
+}
+
+async function handleGenerateLocal({ course, genBtn, genStudents, genStatus, codeList, students }) {
   genBtn.disabled = true;
   const originalLabel = genBtn.textContent;
   genBtn.textContent = "Generating…";
@@ -138,6 +148,110 @@ async function handleGenerate({ course, genBtn, genStudents, genStatus, codeList
     genBtn.disabled = false;
     genBtn.textContent = originalLabel;
   }
+}
+
+async function handleGenerateGitHub({ course, genBtn, genStatus, codeList, students }) {
+  if (!githubToken) {
+    githubToken = prompt(
+      "Enter your GitHub Personal Access Token (fine-grained, actions:write scope).\n" +
+      "This is saved in your browser only and never sent anywhere except GitHub's API.",
+    );
+    if (!githubToken) {
+      setStatus(genStatus, "GitHub token is required to trigger code generation.", "err");
+      return;
+    }
+    localStorage.setItem("gh_pat", githubToken);
+  }
+
+  const requestId = crypto.randomUUID();
+  genBtn.disabled = true;
+  const originalLabel = genBtn.textContent;
+  codeList.hidden = true;
+  codeList.replaceChildren();
+
+  // Trigger the workflow
+  setStatus(genStatus, "Triggering GitHub Actions workflow…");
+  genBtn.textContent = "Triggering…";
+  try {
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/dispatches`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${githubToken}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        event_type: "generate-code",
+        client_payload: {
+          courseNumber: course.courseNumber,
+          courseUrl: course.baseUrl,
+          students: String(students),
+          requestId,
+        },
+      }),
+    });
+    if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem("gh_pat");
+      githubToken = "";
+      setStatus(genStatus, "Invalid GitHub token. Click Generate again to re-enter.", "err");
+      genBtn.disabled = false;
+      genBtn.textContent = originalLabel;
+      return;
+    }
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(`GitHub API ${res.status}: ${msg}`);
+    }
+  } catch (err) {
+    setStatus(genStatus, `Failed to trigger workflow: ${err.message}`, "err");
+    genBtn.disabled = false;
+    genBtn.textContent = originalLabel;
+    return;
+  }
+
+  // Poll for result
+  setStatus(genStatus, "Workflow triggered. Waiting for result (~60-90s)…");
+  genBtn.textContent = "Waiting…";
+  const resultUrl = `${RAW_BASE}/results/${requestId}.json`;
+  const deadline = Date.now() + POLL_TIMEOUT;
+  let dotCount = 0;
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+    dotCount++;
+    const dots = ".".repeat((dotCount % 3) + 1);
+    genBtn.textContent = `Waiting${dots}`;
+    setStatus(
+      genStatus,
+      `Waiting for GitHub Actions result${dots} (${Math.round((Date.now() - (deadline - POLL_TIMEOUT)) / 1000)}s)`,
+    );
+
+    try {
+      const res = await fetch(resultUrl, { cache: "no-store" });
+      if (res.status === 200) {
+        const data = await res.json();
+        if (data.ok) {
+          renderResults(codeList, [{ code: data.code, url: data.url || "" }]);
+          setStatus(genStatus, `Code generated for ${students} students via GitHub Actions.`, "ok");
+        } else {
+          setStatus(genStatus, `Generation failed: ${data.error}`, "err");
+        }
+        genBtn.disabled = false;
+        genBtn.textContent = originalLabel;
+        return;
+      }
+    } catch {
+      // Result not ready yet
+    }
+  }
+
+  setStatus(
+    genStatus,
+    "Timed out waiting for result. Check https://github.com/" + GITHUB_REPO + "/actions for the workflow status.",
+    "err",
+  );
+  genBtn.disabled = false;
+  genBtn.textContent = originalLabel;
 }
 
 function setStatus(el, text, level) {

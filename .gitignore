@@ -23,6 +23,9 @@ Thumbs.db
 # --- Node (unused but kept in case Node backend is added later) -------------
 node_modules/
 
+# --- Generated results from GitHub Actions ----------------------------------
+webapp/results/
+
 # --- xlsx internals (accidentally extracted in-place) -----------------------
 /\[Content_Types\].xml
 /_rels/
