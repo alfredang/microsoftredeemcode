@@ -45,34 +45,94 @@ def write_result(ok, code="", url="", error=""):
 # Microsoft Login
 # ---------------------------------------------------------------------------
 
+def dismiss_cookie_banners(page):
+    """Dismiss any cookie consent or privacy banners that block the page."""
+    for selector in [
+        "#wcpConsentBannerCtrl button",
+        "button[id*='cookie' i]",
+        "button[id*='consent' i]",
+        "button[id*='accept' i]",
+        "[aria-label*='Accept' i]",
+        "[aria-label*='cookie' i]",
+        "button:has-text('Accept')",
+        "button:has-text('Accept all')",
+        "button:has-text('I agree')",
+        "button:has-text('OK')",
+    ]:
+        try:
+            btn = page.locator(selector).first
+            if btn.count() and btn.is_visible():
+                btn.click(timeout=2000)
+                print(f"  Dismissed banner: {selector}")
+                page.wait_for_timeout(500)
+        except Exception:
+            continue
+
+
 def login(page):
-    print("Navigating to Microsoft Learn sign-in...")
-    page.goto("https://learn.microsoft.com/en-us/users/sign-in", wait_until="domcontentloaded")
+    print("Navigating to Microsoft login page directly...")
+    page.goto(
+        "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+        "?client_id=4345a7b9-9a63-4910-a426-35363201d503"
+        "&response_type=code+id_token"
+        "&redirect_uri=https%3A%2F%2Flearn.microsoft.com%2Fapi%2Fauth%2Fsignin-oidc"
+        "&scope=openid+profile+email"
+        "&response_mode=form_post"
+        "&nonce=learn",
+        wait_until="domcontentloaded",
+        timeout=30000,
+    )
     page.wait_for_timeout(3000)
+    page.screenshot(path="/tmp/debug-login-1.png")
+    print(f"  Current URL: {page.url}")
+
+    dismiss_cookie_banners(page)
+
+    # If already on the email input, great. Otherwise try the direct login URL.
+    email_input = page.locator("input[type='email'], input[name='loginfmt']").first
+    if not email_input.count() or not email_input.is_visible():
+        print("  Email input not found, trying direct login URL...")
+        page.goto("https://login.live.com/", wait_until="domcontentloaded", timeout=30000)
+        page.wait_for_timeout(3000)
+        dismiss_cookie_banners(page)
+        page.screenshot(path="/tmp/debug-login-2.png")
 
     print("Filling email...")
     email_input = page.locator("input[type='email'], input[name='loginfmt']").first
-    email_input.wait_for(state="visible", timeout=15000)
+    email_input.wait_for(state="visible", timeout=30000)
     email_input.fill(MS_EMAIL)
-    page.locator("input[type='submit'], #idSIButton9").first.click()
-    page.wait_for_timeout(3000)
+    page.wait_for_timeout(500)
+
+    next_btn = page.locator("input[type='submit'], #idSIButton9").first
+    next_btn.wait_for(state="visible", timeout=5000)
+    next_btn.click()
+    page.wait_for_timeout(4000)
+    page.screenshot(path="/tmp/debug-login-3.png")
 
     print("Filling password...")
     pw_input = page.locator("input[type='password'], input[name='passwd']").first
-    pw_input.wait_for(state="visible", timeout=15000)
+    pw_input.wait_for(state="visible", timeout=30000)
     pw_input.fill(MS_PASSWORD)
-    page.locator("input[type='submit'], #idSIButton9").first.click()
-    page.wait_for_timeout(3000)
+    page.wait_for_timeout(500)
+
+    sign_in_btn = page.locator("input[type='submit'], #idSIButton9").first
+    sign_in_btn.wait_for(state="visible", timeout=5000)
+    sign_in_btn.click()
+    page.wait_for_timeout(4000)
+    page.screenshot(path="/tmp/debug-login-4.png")
 
     # Stay signed in?
     try:
         yes_btn = page.locator("#idSIButton9, input[value='Yes']").first
-        yes_btn.wait_for(state="visible", timeout=5000)
+        yes_btn.wait_for(state="visible", timeout=8000)
         yes_btn.click()
-        page.wait_for_timeout(3000)
+        page.wait_for_timeout(4000)
     except Exception:
         pass
 
+    # Verify we're actually signed in
+    page.screenshot(path="/tmp/debug-login-5.png")
+    print(f"  Final URL: {page.url}")
     print("Login complete.")
 
 
