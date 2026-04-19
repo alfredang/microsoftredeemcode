@@ -268,21 +268,6 @@ async function checkBackend() {
     backendAvailable = true;
   } catch {
     backendAvailable = false;
-    showBackendNotice();
-  }
-}
-
-function showBackendNotice() {
-  const notice = document.createElement("div");
-  notice.className = "backend-notice";
-  notice.innerHTML =
-    '<span>Code generation requires running <code>python server.py</code> locally. ' +
-    '<a href="https://github.com/alfredang/microsoftredeemcode#full-mode-with-code-generation" ' +
-    'target="_blank" rel="noopener">Setup guide</a></span>';
-  const shell = document.querySelector(".shell");
-  const search = document.querySelector(".search");
-  if (shell && search) {
-    shell.insertBefore(notice, search);
   }
 }
 
