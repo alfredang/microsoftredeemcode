@@ -1,11 +1,15 @@
-"""GitHub Actions script: log in to Microsoft Learn and generate an achievement code.
+"""GitHub Actions script: generate an achievement code using a saved session.
+
+Uses a pre-authenticated storage state (saved from a local login) to skip
+the Microsoft login entirely, avoiding MFA/security challenges.
 
 Reads inputs from environment variables (set by the workflow):
-  COURSE_NUMBER, COURSE_URL, STUDENTS, REQUEST_ID, MS_EMAIL, MS_PASSWORD
+  COURSE_NUMBER, COURSE_URL, STUDENTS, REQUEST_ID, MS_STORAGE_STATE (base64)
 
 Writes the result to /tmp/result.json for the workflow to pick up.
 """
 
+import base64
 import json
 import os
 import re
@@ -19,10 +23,9 @@ COURSE_NUMBER = os.environ["COURSE_NUMBER"]
 COURSE_URL = os.environ["COURSE_URL"] + SG_SUFFIX
 STUDENTS = int(os.environ.get("STUDENTS", "1"))
 REQUEST_ID = os.environ["REQUEST_ID"]
-MS_EMAIL = os.environ["MS_EMAIL"]
-MS_PASSWORD = os.environ["MS_PASSWORD"]
 
 RESULT_PATH = "/tmp/result.json"
+STORAGE_STATE_PATH = "/tmp/storage_state.json"
 
 
 def write_result(ok, code="", url="", error=""):
@@ -42,137 +45,22 @@ def write_result(ok, code="", url="", error=""):
 
 
 # ---------------------------------------------------------------------------
-# Microsoft Login
+# Session Restore (replaces login)
 # ---------------------------------------------------------------------------
 
-def dismiss_cookie_banners(page):
-    """Dismiss any cookie consent or privacy banners that block the page."""
-    for selector in [
-        "#wcpConsentBannerCtrl button",
-        "button[id*='cookie' i]",
-        "button[id*='consent' i]",
-        "button[id*='accept' i]",
-        "[aria-label*='Accept' i]",
-        "[aria-label*='cookie' i]",
-        "button:has-text('Accept')",
-        "button:has-text('Accept all')",
-        "button:has-text('I agree')",
-        "button:has-text('OK')",
-    ]:
-        try:
-            btn = page.locator(selector).first
-            if btn.count() and btn.is_visible():
-                btn.click(timeout=2000)
-                print(f"  Dismissed banner: {selector}")
-                page.wait_for_timeout(500)
-        except Exception:
-            continue
-
-
-def login(page):
-    print(f"  MS_EMAIL length: {len(MS_EMAIL)}")
-    print(f"  MS_PASSWORD length: {len(MS_PASSWORD)}")
-
-    if not MS_EMAIL or not MS_PASSWORD:
-        raise RuntimeError("MS_EMAIL or MS_PASSWORD is empty — check GitHub Secrets.")
-
-    print("Navigating to Microsoft login page...")
-    page.goto("https://login.live.com/", wait_until="domcontentloaded", timeout=30000)
-    page.wait_for_timeout(3000)
-    dismiss_cookie_banners(page)
-    page.screenshot(path="/tmp/debug-login-1.png")
-    print(f"  URL after load: {page.url}")
-
-    # --- Email ---
-    print("Typing email...")
-    email_input = page.locator("input[type='email'], input[name='loginfmt']").first
-    email_input.wait_for(state="visible", timeout=30000)
-    email_input.click()
-    page.wait_for_timeout(300)
-    email_input.press_sequentially(MS_EMAIL, delay=50)
-    page.wait_for_timeout(500)
-
-    # Verify the value landed
-    typed_val = email_input.input_value()
-    print(f"  Email field value length: {len(typed_val)}")
-    page.screenshot(path="/tmp/debug-login-2.png")
-
-    page.wait_for_timeout(500)
-    page.keyboard.press("Enter")
-    page.wait_for_timeout(5000)
-    page.screenshot(path="/tmp/debug-login-3.png")
-    print(f"  URL after email: {page.url}")
-
-    # --- Handle "Verify your email" / "Other ways to sign in" ---
-    pw_input = page.locator("input[type='password'], input[name='passwd']").first
-    if not pw_input.count() or not pw_input.is_visible():
-        print("  Password field not visible — looking for 'Other ways to sign in'...")
-        try:
-            other_ways = page.get_by_text("Other ways to sign in").first
-            other_ways.wait_for(state="visible", timeout=5000)
-            other_ways.click()
-            page.wait_for_timeout(3000)
-            page.screenshot(path="/tmp/debug-login-3b.png")
-            print("  Clicked 'Other ways to sign in'")
-
-            # Look for password option
-            for label in [
-                "Use my password",
-                "Use a password",
-                "Password",
-                "Enter password",
-            ]:
-                try:
-                    opt = page.get_by_text(label).first
-                    if opt.count() and opt.is_visible():
-                        opt.click()
-                        page.wait_for_timeout(3000)
-                        print(f"  Selected: {label}")
-                        break
-                except Exception:
-                    continue
-
-            page.screenshot(path="/tmp/debug-login-3c.png")
-        except Exception as e:
-            print(f"  Could not find 'Other ways to sign in': {e}")
-            page.screenshot(path="/tmp/debug-login-3d.png")
-
-    # --- Password ---
-    print("Typing password...")
-    pw_input = page.locator("input[type='password'], input[name='passwd']").first
-    pw_input.wait_for(state="visible", timeout=30000)
-    pw_input.click()
-    page.wait_for_timeout(300)
-    pw_input.press_sequentially(MS_PASSWORD, delay=50)
-    page.wait_for_timeout(500)
-    page.screenshot(path="/tmp/debug-login-4.png")
-
-    page.keyboard.press("Enter")
-    page.wait_for_timeout(5000)
-    page.screenshot(path="/tmp/debug-login-5.png")
-    print(f"  URL after password: {page.url}")
-
-    # --- Stay signed in? ---
-    try:
-        yes_btn = page.locator("#idSIButton9, input[value='Yes']").first
-        yes_btn.wait_for(state="visible", timeout=8000)
-        yes_btn.click()
-        page.wait_for_timeout(5000)
-    except Exception:
-        pass
-
-    page.screenshot(path="/tmp/debug-login-6.png")
-    print(f"  Final URL: {page.url}")
-
-    # Verify login worked
-    url = page.url.lower()
-    if "login.live.com" in url or "login.microsoftonline.com" in url:
+def restore_session():
+    """Decode the base64-encoded storage state from GitHub Secrets."""
+    b64 = os.environ.get("MS_STORAGE_STATE", "").strip()
+    if not b64:
         raise RuntimeError(
-            f"Login appears to have failed — still on login page: {page.url}. "
-            "Check debug screenshots and verify GitHub Secrets MS_EMAIL / MS_PASSWORD are correct."
+            "MS_STORAGE_STATE secret is empty. Run the local server, sign in, "
+            "then base64-encode webapp/data/storage_state.json and save it as "
+            "a GitHub Secret named MS_STORAGE_STATE."
         )
-
-    print("Login complete.")
+    raw = base64.b64decode(b64)
+    with open(STORAGE_STATE_PATH, "wb") as f:
+        f.write(raw)
+    print(f"Restored storage state ({len(raw)} bytes) to {STORAGE_STATE_PATH}")
 
 
 # ---------------------------------------------------------------------------
@@ -359,13 +247,17 @@ def generate(page):
 def main():
     print(f"Request {REQUEST_ID}: course={COURSE_NUMBER}, students={STUDENTS}")
 
+    restore_session()
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(viewport={"width": 1280, "height": 860})
+        context = browser.new_context(
+            storage_state=STORAGE_STATE_PATH,
+            viewport={"width": 1280, "height": 860},
+        )
         page = context.new_page()
 
         try:
-            login(page)
             code, url = generate(page)
             write_result(True, code=code, url=url)
         except Exception as err:
