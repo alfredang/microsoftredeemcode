@@ -3,6 +3,7 @@ const MAX_VISIBLE = 50;
 const DEBOUNCE_MS = 120;
 const GITHUB_REPO = "alfredang/microsoftredeemcode";
 const RAW_BASE = "https://raw.githubusercontent.com/alfredang/microsoftredeemcode/main/webapp";
+const WORKER_URL = "https://msredeem-dispatch.angch.workers.dev";
 const POLL_INTERVAL = 5000;
 const POLL_TIMEOUT = 180000;
 
@@ -14,7 +15,8 @@ const template = document.getElementById("card-template");
 let courses = [];
 let debounceId = 0;
 let backendAvailable = false;
-let githubToken = localStorage.getItem("gh_pat") || "";
+
+localStorage.removeItem("gh_pat");
 
 function singaporeUrl(baseUrl) {
   return baseUrl + SG_SUFFIX;
@@ -151,35 +153,18 @@ async function handleGenerateLocal({ course, genBtn, genStudents, genStatus, cod
 }
 
 async function handleGenerateGitHub({ course, genBtn, genStatus, codeList, students }) {
-  if (!githubToken) {
-    githubToken = prompt(
-      "Enter your GitHub Personal Access Token (fine-grained, actions:write scope).\n" +
-      "This is saved in your browser only and never sent anywhere except GitHub's API.",
-    );
-    if (!githubToken) {
-      setStatus(genStatus, "GitHub token is required to trigger code generation.", "err");
-      return;
-    }
-    localStorage.setItem("gh_pat", githubToken);
-  }
-
   const requestId = crypto.randomUUID();
   genBtn.disabled = true;
   const originalLabel = genBtn.textContent;
   codeList.hidden = true;
   codeList.replaceChildren();
 
-  // Trigger the workflow
   setStatus(genStatus, "Triggering GitHub Actions workflow…");
   genBtn.textContent = "Triggering…";
   try {
-    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/dispatches`, {
+    const res = await fetch(WORKER_URL, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: "application/vnd.github+json",
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         event_type: "generate-code",
         client_payload: {
@@ -190,17 +175,9 @@ async function handleGenerateGitHub({ course, genBtn, genStatus, codeList, stude
         },
       }),
     });
-    if (res.status === 401 || res.status === 403) {
-      localStorage.removeItem("gh_pat");
-      githubToken = "";
-      setStatus(genStatus, "Invalid GitHub token. Click Generate again to re-enter.", "err");
-      genBtn.disabled = false;
-      genBtn.textContent = originalLabel;
-      return;
-    }
     if (!res.ok) {
       const msg = await res.text();
-      throw new Error(`GitHub API ${res.status}: ${msg}`);
+      throw new Error(`Proxy ${res.status}: ${msg}`);
     }
   } catch (err) {
     setStatus(genStatus, `Failed to trigger workflow: ${err.message}`, "err");
