@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 5
     defaults:
       run:
-        shell: powershell
+        shell: cmd
     steps:
       - name: Checkout main branch
         uses: actions/checkout@v4
@@ -42,8 +42,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          New-Item -ItemType Directory -Force -Path webapp/results
-          Copy-Item "$env:TEMP/result.json" -Destination "webapp/results/${{ github.event.client_payload.requestId }}.json"
+          if not exist webapp\results mkdir webapp\results
+          copy "%TEMP%\result.json" "webapp\results\${{ github.event.client_payload.requestId }}.json"
           git add -f webapp/results/
           git commit -m "result: ${{ github.event.client_payload.requestId }}"
           git push
