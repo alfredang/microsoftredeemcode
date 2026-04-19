@@ -89,7 +89,13 @@ function renderCard(course) {
 
 async function handleGenerate({ course, genBtn, genStudents, genStatus, codeList }) {
   if (!backendAvailable) {
-    setStatus(genStatus, "Code generation requires running python server.py locally.", "err");
+    const url = singaporeUrl(course.baseUrl);
+    window.open(url, "_blank", "noopener");
+    setStatus(
+      genStatus,
+      "Opened the course page in a new tab. Sign in to Microsoft Learn if needed, then click 'Request achievement code' on the page.",
+      "ok",
+    );
     return;
   }
 
@@ -276,9 +282,9 @@ function showBackendNotice() {
   const notice = document.createElement("div");
   notice.className = "backend-notice";
   notice.innerHTML =
-    '<span>Code generation requires running <code>python server.py</code> locally. ' +
-    '<a href="https://github.com/alfredang/microsoftredeemcode#full-mode-with-code-generation" ' +
-    'target="_blank" rel="noopener">Setup guide</a></span>';
+    '<span>Generate will open the course page in a new tab — sign in to Microsoft Learn and request the code manually. ' +
+    'For automated code generation, <a href="https://github.com/alfredang/microsoftredeemcode#full-mode-with-code-generation" ' +
+    'target="_blank" rel="noopener">run the local server</a>.</span>';
   const shell = document.querySelector(".shell");
   const search = document.querySelector(".search");
   if (shell && search) {
