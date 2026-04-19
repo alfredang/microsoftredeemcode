@@ -70,69 +70,77 @@ def dismiss_cookie_banners(page):
 
 
 def login(page):
-    print("Navigating to Microsoft login page directly...")
-    page.goto(
-        "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
-        "?client_id=4345a7b9-9a63-4910-a426-35363201d503"
-        "&response_type=code+id_token"
-        "&redirect_uri=https%3A%2F%2Flearn.microsoft.com%2Fapi%2Fauth%2Fsignin-oidc"
-        "&scope=openid+profile+email"
-        "&response_mode=form_post"
-        "&nonce=learn",
-        wait_until="domcontentloaded",
-        timeout=30000,
-    )
+    print(f"  MS_EMAIL length: {len(MS_EMAIL)}")
+    print(f"  MS_PASSWORD length: {len(MS_PASSWORD)}")
+
+    if not MS_EMAIL or not MS_PASSWORD:
+        raise RuntimeError("MS_EMAIL or MS_PASSWORD is empty — check GitHub Secrets.")
+
+    print("Navigating to Microsoft login page...")
+    page.goto("https://login.live.com/", wait_until="domcontentloaded", timeout=30000)
     page.wait_for_timeout(3000)
-    page.screenshot(path="/tmp/debug-login-1.png")
-    print(f"  Current URL: {page.url}")
-
     dismiss_cookie_banners(page)
+    page.screenshot(path="/tmp/debug-login-1.png")
+    print(f"  URL after load: {page.url}")
 
-    # If already on the email input, great. Otherwise try the direct login URL.
-    email_input = page.locator("input[type='email'], input[name='loginfmt']").first
-    if not email_input.count() or not email_input.is_visible():
-        print("  Email input not found, trying direct login URL...")
-        page.goto("https://login.live.com/", wait_until="domcontentloaded", timeout=30000)
-        page.wait_for_timeout(3000)
-        dismiss_cookie_banners(page)
-        page.screenshot(path="/tmp/debug-login-2.png")
-
-    print("Filling email...")
+    # --- Email ---
+    print("Typing email...")
     email_input = page.locator("input[type='email'], input[name='loginfmt']").first
     email_input.wait_for(state="visible", timeout=30000)
-    email_input.fill(MS_EMAIL)
+    email_input.click()
+    page.wait_for_timeout(300)
+    email_input.press_sequentially(MS_EMAIL, delay=50)
     page.wait_for_timeout(500)
+
+    # Verify the value landed
+    typed_val = email_input.input_value()
+    print(f"  Email field value length: {len(typed_val)}")
+    page.screenshot(path="/tmp/debug-login-2.png")
 
     next_btn = page.locator("input[type='submit'], #idSIButton9").first
     next_btn.wait_for(state="visible", timeout=5000)
     next_btn.click()
-    page.wait_for_timeout(4000)
+    page.wait_for_timeout(5000)
     page.screenshot(path="/tmp/debug-login-3.png")
+    print(f"  URL after email: {page.url}")
 
-    print("Filling password...")
+    # --- Password ---
+    print("Typing password...")
     pw_input = page.locator("input[type='password'], input[name='passwd']").first
     pw_input.wait_for(state="visible", timeout=30000)
-    pw_input.fill(MS_PASSWORD)
+    pw_input.click()
+    page.wait_for_timeout(300)
+    pw_input.press_sequentially(MS_PASSWORD, delay=50)
     page.wait_for_timeout(500)
+    page.screenshot(path="/tmp/debug-login-4.png")
 
     sign_in_btn = page.locator("input[type='submit'], #idSIButton9").first
     sign_in_btn.wait_for(state="visible", timeout=5000)
     sign_in_btn.click()
-    page.wait_for_timeout(4000)
-    page.screenshot(path="/tmp/debug-login-4.png")
+    page.wait_for_timeout(5000)
+    page.screenshot(path="/tmp/debug-login-5.png")
+    print(f"  URL after password: {page.url}")
 
-    # Stay signed in?
+    # --- Stay signed in? ---
     try:
         yes_btn = page.locator("#idSIButton9, input[value='Yes']").first
         yes_btn.wait_for(state="visible", timeout=8000)
         yes_btn.click()
-        page.wait_for_timeout(4000)
+        page.wait_for_timeout(5000)
     except Exception:
         pass
 
-    # Verify we're actually signed in
-    page.screenshot(path="/tmp/debug-login-5.png")
+    page.screenshot(path="/tmp/debug-login-6.png")
     print(f"  Final URL: {page.url}")
+
+    # Verify login worked
+    url = page.url.lower()
+    if "login.live.com" in url or "login.microsoftonline.com" in url:
+        raise RuntimeError(
+            f"Login appears to have failed — still on login page: {page.url}. "
+            "Check debug screenshots and verify GitHub Secrets MS_EMAIL / MS_PASSWORD are correct."
+        )
+
     print("Login complete.")
 
 
