@@ -24,7 +24,8 @@ COURSE_URL = os.environ["COURSE_URL"] + SG_SUFFIX
 STUDENTS = int(os.environ.get("STUDENTS", "1"))
 REQUEST_ID = os.environ["REQUEST_ID"]
 
-RESULT_PATH = os.path.join(os.environ.get("TEMP", "/tmp"), "result.json")
+TMPDIR = os.environ.get("TEMP", os.environ.get("RUNNER_TEMP", "/tmp"))
+RESULT_PATH = os.path.join(TMPDIR, "result.json")
 
 # On self-hosted runner, use the local storage state directly.
 # Falls back to decoding MS_STORAGE_STATE secret if set.
@@ -132,10 +133,10 @@ def generate(page):
     print("Step 1: Finding 'Request achievement code' button...")
     btn = find_request_button(page)
     if not btn:
-        page.screenshot(path="/tmp/debug-step1.png", full_page=True)
+        page.screenshot(path=f"{TMPDIR}/debug-step1.png", full_page=True)
         raise RuntimeError(
             "Could not find 'Request achievement code' button. "
-            "Check /tmp/debug-step1.png"
+            f"Check {TMPDIR}/debug-step1.png"
         )
     btn.scroll_into_view_if_needed()
     btn.click()
@@ -182,7 +183,7 @@ def generate(page):
             pass
         page.wait_for_timeout(500)
     else:
-        page.screenshot(path="/tmp/debug-step2.png", full_page=True)
+        page.screenshot(path=f"{TMPDIR}/debug-step2.png", full_page=True)
         raise RuntimeError("Timed out waiting for 'code is ready' message.")
 
     print("Code is ready! Extracting...")
@@ -248,7 +249,7 @@ def generate(page):
             pass
 
     if not code:
-        page.screenshot(path="/tmp/debug-step3.png", full_page=True)
+        page.screenshot(path=f"{TMPDIR}/debug-step3.png", full_page=True)
         raise RuntimeError("Could not extract the achievement code from the modal.")
 
     print(f"Success! Code: {code}, URL: {url}")
@@ -279,7 +280,7 @@ def main():
         except Exception as err:
             print(f"Error: {err}")
             try:
-                page.screenshot(path="/tmp/debug-error.png", full_page=True)
+                page.screenshot(path=f"{TMPDIR}/debug-error.png", full_page=True)
             except Exception:
                 pass
             write_result(False, error=str(err))

@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 5
     defaults:
       run:
-        shell: bash
+        shell: powershell
     steps:
       - name: Checkout main branch
         uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: debug-screenshots
-          path: C:/Users/ADMIN/AppData/Local/Temp/debug-*.png
+          path: ${{ runner.temp }}/debug-*.png
           if-no-files-found: ignore
           retention-days: 3
 
@@ -42,8 +42,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          mkdir -p webapp/results
-          cp /tmp/result.json webapp/results/${{ github.event.client_payload.requestId }}.json || cp $TEMP/result.json webapp/results/${{ github.event.client_payload.requestId }}.json
+          New-Item -ItemType Directory -Force -Path webapp/results
+          Copy-Item "$env:TEMP/result.json" -Destination "webapp/results/${{ github.event.client_payload.requestId }}.json"
           git add -f webapp/results/
           git commit -m "result: ${{ github.event.client_payload.requestId }}"
           git push
