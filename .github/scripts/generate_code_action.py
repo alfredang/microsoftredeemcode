@@ -103,6 +103,40 @@ def login(page):
     page.screenshot(path="/tmp/debug-login-3.png")
     print(f"  URL after email: {page.url}")
 
+    # --- Handle "Verify your email" / "Other ways to sign in" ---
+    pw_input = page.locator("input[type='password'], input[name='passwd']").first
+    if not pw_input.count() or not pw_input.is_visible():
+        print("  Password field not visible — looking for 'Other ways to sign in'...")
+        try:
+            other_ways = page.get_by_text("Other ways to sign in").first
+            other_ways.wait_for(state="visible", timeout=5000)
+            other_ways.click()
+            page.wait_for_timeout(3000)
+            page.screenshot(path="/tmp/debug-login-3b.png")
+            print("  Clicked 'Other ways to sign in'")
+
+            # Look for password option
+            for label in [
+                "Use my password",
+                "Use a password",
+                "Password",
+                "Enter password",
+            ]:
+                try:
+                    opt = page.get_by_text(label).first
+                    if opt.count() and opt.is_visible():
+                        opt.click()
+                        page.wait_for_timeout(3000)
+                        print(f"  Selected: {label}")
+                        break
+                except Exception:
+                    continue
+
+            page.screenshot(path="/tmp/debug-login-3c.png")
+        except Exception as e:
+            print(f"  Could not find 'Other ways to sign in': {e}")
+            page.screenshot(path="/tmp/debug-login-3d.png")
+
     # --- Password ---
     print("Typing password...")
     pw_input = page.locator("input[type='password'], input[name='passwd']").first
