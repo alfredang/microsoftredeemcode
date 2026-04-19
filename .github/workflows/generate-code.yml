@@ -44,6 +44,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p webapp/results
           cp /tmp/result.json webapp/results/${{ github.event.client_payload.requestId }}.json
-          git add webapp/results/
+          git add -f webapp/results/
           git commit -m "result: ${{ github.event.client_payload.requestId }}"
           git push
