@@ -11,30 +11,22 @@ permissions:
 
 jobs:
   generate:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 5
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout main branch
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          pip install playwright python-dotenv
-          playwright install chromium
-          playwright install-deps chromium
-
       - name: Generate achievement code
         env:
-          MS_STORAGE_STATE: ${{ secrets.MS_STORAGE_STATE }}
           COURSE_NUMBER: ${{ github.event.client_payload.courseNumber }}
           COURSE_URL: ${{ github.event.client_payload.courseUrl }}
           STUDENTS: ${{ github.event.client_payload.students }}
           REQUEST_ID: ${{ github.event.client_payload.requestId }}
+          STORAGE_STATE_PATH: ${{ github.workspace }}/../../../microsoftcert/webapp/data/storage_state.json
         run: python .github/scripts/generate_code_action.py
 
       - name: Upload debug screenshots
@@ -42,7 +34,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: debug-screenshots
-          path: /tmp/debug-*.png
+          path: C:/Users/ADMIN/AppData/Local/Temp/debug-*.png
           if-no-files-found: ignore
           retention-days: 3
 
@@ -51,7 +43,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p webapp/results
-          cp /tmp/result.json webapp/results/${{ github.event.client_payload.requestId }}.json
+          cp /tmp/result.json webapp/results/${{ github.event.client_payload.requestId }}.json || cp $TEMP/result.json webapp/results/${{ github.event.client_payload.requestId }}.json
           git add -f webapp/results/
           git commit -m "result: ${{ github.event.client_payload.requestId }}"
           git push

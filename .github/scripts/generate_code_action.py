@@ -24,8 +24,15 @@ COURSE_URL = os.environ["COURSE_URL"] + SG_SUFFIX
 STUDENTS = int(os.environ.get("STUDENTS", "1"))
 REQUEST_ID = os.environ["REQUEST_ID"]
 
-RESULT_PATH = "/tmp/result.json"
-STORAGE_STATE_PATH = "/tmp/storage_state.json"
+RESULT_PATH = os.path.join(os.environ.get("TEMP", "/tmp"), "result.json")
+
+# On self-hosted runner, use the local storage state directly.
+# Falls back to decoding MS_STORAGE_STATE secret if set.
+LOCAL_STORAGE_STATE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "..", "..", "webapp", "data", "storage_state.json"
+)
+STORAGE_STATE_PATH = os.environ.get("STORAGE_STATE_PATH", LOCAL_STORAGE_STATE)
 
 
 def write_result(ok, code="", url="", error=""):
@@ -49,18 +56,26 @@ def write_result(ok, code="", url="", error=""):
 # ---------------------------------------------------------------------------
 
 def restore_session():
-    """Decode the base64-encoded storage state from GitHub Secrets."""
+    """Use the local storage state file from the self-hosted runner."""
+    path = STORAGE_STATE_PATH
+    if os.path.exists(path):
+        size = os.path.getsize(path)
+        print(f"Using local storage state: {path} ({size} bytes)")
+        return
+
+    # Fallback: decode from GitHub Secret
     b64 = os.environ.get("MS_STORAGE_STATE", "").strip()
-    if not b64:
-        raise RuntimeError(
-            "MS_STORAGE_STATE secret is empty. Run the local server, sign in, "
-            "then base64-encode webapp/data/storage_state.json and save it as "
-            "a GitHub Secret named MS_STORAGE_STATE."
-        )
-    raw = base64.b64decode(b64)
-    with open(STORAGE_STATE_PATH, "wb") as f:
-        f.write(raw)
-    print(f"Restored storage state ({len(raw)} bytes) to {STORAGE_STATE_PATH}")
+    if b64:
+        raw = base64.b64decode(b64)
+        with open(path, "wb") as f:
+            f.write(raw)
+        print(f"Decoded storage state from secret ({len(raw)} bytes)")
+        return
+
+    raise RuntimeError(
+        "No storage state found. Sign in locally first: "
+        "run 'python server.py', click Sign in, then the session is saved automatically."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -248,11 +263,12 @@ def main():
     print(f"Request {REQUEST_ID}: course={COURSE_NUMBER}, students={STUDENTS}")
 
     restore_session()
+    state_path = STORAGE_STATE_PATH if os.path.exists(STORAGE_STATE_PATH) else os.path.join(os.environ.get("TEMP", "/tmp"), "storage_state.json")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(
-            storage_state=STORAGE_STATE_PATH,
+            storage_state=state_path,
             viewport={"width": 1280, "height": 860},
         )
         page = context.new_page()
