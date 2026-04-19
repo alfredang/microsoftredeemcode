@@ -97,8 +97,9 @@ def login(page):
     print(f"  Email field value length: {len(typed_val)}")
     page.screenshot(path="/tmp/debug-login-2.png")
 
-    next_btn = page.locator("input[type='submit'], #idSIButton9").first
-    next_btn.wait_for(state="visible", timeout=5000)
+    page.wait_for_timeout(1000)
+    next_btn = page.locator("#idSIButton9, input[type='submit'], button[type='submit']").first
+    next_btn.wait_for(state="visible", timeout=15000)
     next_btn.click()
     page.wait_for_timeout(5000)
     page.screenshot(path="/tmp/debug-login-3.png")
@@ -111,11 +112,11 @@ def login(page):
     pw_input.click()
     page.wait_for_timeout(300)
     pw_input.press_sequentially(MS_PASSWORD, delay=50)
-    page.wait_for_timeout(500)
+    page.wait_for_timeout(1000)
     page.screenshot(path="/tmp/debug-login-4.png")
 
-    sign_in_btn = page.locator("input[type='submit'], #idSIButton9").first
-    sign_in_btn.wait_for(state="visible", timeout=5000)
+    sign_in_btn = page.locator("#idSIButton9, input[type='submit'], button[type='submit']").first
+    sign_in_btn.wait_for(state="visible", timeout=15000)
     sign_in_btn.click()
     page.wait_for_timeout(5000)
     page.screenshot(path="/tmp/debug-login-5.png")
