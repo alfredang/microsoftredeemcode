@@ -20,7 +20,7 @@ from .paths import STORAGE_STATE
 
 load_dotenv()
 
-LOGIN_URL = "https://learn.microsoft.com/en-us/users/sign-in"
+LOGIN_URL = "https://learn.microsoft.com/en-us/?source=docs"
 LEARN_DOMAIN = "learn.microsoft.com"
 
 
@@ -35,25 +35,48 @@ def _get_credentials() -> tuple[str, str]:
     return email, password
 
 
+def _trigger_signin(page) -> None:
+    """If we landed on a Learn page that gates the email form behind a
+    'Sign in' click, find and click that trigger first."""
+    if "login." in page.url.lower():
+        return
+    triggers = [
+        "a[href*='login.microsoftonline.com']",
+        "a[href*='login.live.com']",
+        "a[href*='/users/sign-in']",
+        "button:has-text('Sign in')",
+        "a:has-text('Sign in')",
+    ]
+    for sel in triggers:
+        try:
+            loc = page.locator(sel).first
+            if loc.count() and loc.is_visible():
+                loc.click(timeout=3000)
+                page.wait_for_timeout(2000)
+                return
+        except Exception:
+            continue
+
+
 def _fill_email(page, email: str) -> None:
     """Fill the email on the Microsoft login page and click Next."""
     email_input = page.locator("input[type='email'], input[name='loginfmt']").first
-    email_input.wait_for(state="visible", timeout=15000)
+    try:
+        email_input.wait_for(state="visible", timeout=8000)
+    except Exception:
+        _trigger_signin(page)
+        email_input.wait_for(state="visible", timeout=15000)
     email_input.fill(email)
-
-    next_btn = page.locator("input[type='submit'], #idSIButton9").first
-    next_btn.click()
+    email_input.press("Enter")
     page.wait_for_timeout(2000)
 
 
 def _fill_password(page, password: str) -> None:
-    """Fill the password and click Sign in."""
+    """Fill the password and press Enter to submit."""
     pw_input = page.locator("input[type='password'], input[name='passwd']").first
     pw_input.wait_for(state="visible", timeout=15000)
     pw_input.fill(password)
-
-    sign_in_btn = page.locator("input[type='submit'], #idSIButton9").first
-    sign_in_btn.click()
+    pw_input.press("Enter")
     page.wait_for_timeout(2000)
 
 
@@ -87,24 +110,27 @@ def _handle_additional_prompts(page) -> None:
             continue
 
 
+AUTH_COOKIE_PREFIXES = (
+    "ESTSAUTH",   # Azure AD work accounts
+    "MSPAuth",    # MS personal accounts (live.com)
+    "MSPProf",
+    "WLSSC",
+    "RPSSecAuth",
+    "FedAuth",
+)
+
+
 def _wait_for_authenticated(page, timeout_s: int = 30) -> bool:
     """Wait until we're back on learn.microsoft.com with a signed-in session."""
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         url = page.url.lower()
-        if LEARN_DOMAIN in url:
-            # Check for auth cookies
+        if LEARN_DOMAIN in url and "login." not in url:
             cookies = page.context.cookies()
             for c in cookies:
-                if c.get("name", "").startswith("ESTSAUTH"):
+                name = c.get("name", "")
+                if any(name.startswith(p) for p in AUTH_COOKIE_PREFIXES):
                     return True
-            # Also check if we can see profile-related elements
-            try:
-                body = page.inner_text("body").lower()
-                if "sign out" in body or "my profile" in body or "my learning" in body:
-                    return True
-            except Exception:
-                pass
         page.wait_for_timeout(500)
     return False
 
@@ -149,11 +175,24 @@ def run_login() -> dict:
             return {"ok": True, "storage_state": str(STORAGE_STATE)}
 
         except Exception as err:
+            debug_info = ""
+            try:
+                from .paths import DATA
+                debug_dir = DATA / "debug"
+                debug_dir.mkdir(parents=True, exist_ok=True)
+                ts = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+                shot_path = debug_dir / f"login-{ts}.png"
+                html_path = debug_dir / f"login-{ts}.html"
+                page.screenshot(path=str(shot_path), full_page=True)
+                html_path.write_text(page.content(), encoding="utf-8")
+                debug_info = f" (debug: url={page.url}, screenshot={shot_path.name})"
+            except Exception:
+                pass
             try:
                 browser.close()
             except Exception:
                 pass
-            return {"ok": False, "error": f"Login failed: {err}"}
+            return {"ok": False, "error": f"Login failed: {err}{debug_info}"}
 
 
 if __name__ == "__main__":

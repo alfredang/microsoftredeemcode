@@ -1,6 +1,8 @@
 # --- Secrets and generated artifacts (never commit) -------------------------
 # Saved Playwright session — contains Microsoft auth cookies.
 webapp/data/storage_state.json
+# Base64-encoded session state exports — also contain auth cookies.
+webapp/data/storage_b64*.txt
 # Generated achievement codes.
 webapp/data/codes.csv
 # Debug screenshots and captured HTML.
