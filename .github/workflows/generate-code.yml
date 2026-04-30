@@ -18,7 +18,7 @@ jobs:
         shell: cmd
     steps:
       - name: Checkout main branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Generate achievement code
         env:
@@ -31,7 +31,7 @@ jobs:
 
       - name: Upload debug screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: debug-screenshots
           path: ${{ runner.temp }}/debug-*.png
