@@ -720,14 +720,6 @@
     "baseUrl": "https://learn.microsoft.com/training/courses/mb-820t00"
   },
   {
-    "courseNumber": "MD-102T00",
-    "title": "MD-102T00: Microsoft 365 Endpoint Administrator",
-    "solutionArea": "Modern Work",
-    "duration": "5 day",
-    "credential": "Exam/Certification",
-    "baseUrl": "https://learn.microsoft.com/training/courses/md-102t00"
-  },
-  {
     "courseNumber": "MD-4011",
     "title": "MD-4011: Enhance endpoint security with Microsoft Intune and Microsoft Security Copilot",
     "solutionArea": "Modern Work",
@@ -1045,7 +1037,7 @@
     "solutionArea": "Security",
     "duration": "4 day",
     "credential": "Exam/Certification",
-    "baseUrl": "https://learn.microsoft.com/en-us/training/courses/sc-500T00"
+    "baseUrl": "https://learn.microsoft.com/training/courses/sc-500T00"
   },
   {
     "courseNumber": "SC-900T00",

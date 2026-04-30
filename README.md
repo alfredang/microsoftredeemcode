@@ -68,7 +68,7 @@ A web app for Singapore-based Microsoft Certified Trainers (MCTs) to look up Mic
 ```
 microsoftredeemcode/
 ├── .github/workflows/pages.yml   # deploys webapp/ to GitHub Pages
-├── titleplan_april10_2026.xlsx   # source of truth
+├── titleplan_april24_2026.xlsx   # source of truth
 ├── webapp/
 │   ├── index.html · styles.css · app.js   # static UI
 │   ├── courses.json              # extracted from xlsx

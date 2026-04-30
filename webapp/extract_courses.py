@@ -6,7 +6,7 @@ from pathlib import Path
 from openpyxl import load_workbook
 
 HERE = Path(__file__).resolve().parent
-XLSX = HERE.parent / "titleplan_april10_2026.xlsx"
+XLSX = HERE.parent / "titleplan_april24_2026.xlsx"
 OUT = HERE / "courses.json"
 
 SHEET = "Courseware Title Plan"
