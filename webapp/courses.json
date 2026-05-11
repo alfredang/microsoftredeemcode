@@ -112,28 +112,12 @@
     "baseUrl": "https://learn.microsoft.com/training/courses/ai-200t00"
   },
   {
-    "courseNumber": "AI-3002",
-    "title": "AI-3002: Develop AI information extraction solutions in Azure",
-    "solutionArea": "Data & AI",
-    "duration": "1 day",
-    "credential": "N/A",
-    "baseUrl": "https://learn.microsoft.com/training/courses/ai-3002"
-  },
-  {
     "courseNumber": "AI-3003",
     "title": "AI-3003: Develop natural language solutions in Azure​",
     "solutionArea": "Data & AI",
     "duration": "1 day",
     "credential": "Applied Skills Assessment",
     "baseUrl": "https://learn.microsoft.com/training/paths/develop-language-solutions-azure-ai/"
-  },
-  {
-    "courseNumber": "AI-3004",
-    "title": "AI-3004: Develop computer vision solutions in Azure",
-    "solutionArea": "Security",
-    "duration": "1 day",
-    "credential": "N/A",
-    "baseUrl": "https://learn.microsoft.com/training/courses/ai-3004"
   },
   {
     "courseNumber": "AI-3008",
@@ -720,6 +704,14 @@
     "baseUrl": "https://learn.microsoft.com/training/courses/mb-820t00"
   },
   {
+    "courseNumber": "MD-102T00",
+    "title": "MD-102T00: Microsoft 365 Endpoint Administrator",
+    "solutionArea": "Modern Work",
+    "duration": "5 day",
+    "credential": "Exam/Certification",
+    "baseUrl": "https://learn.microsoft.com/training/courses/md-102t00"
+  },
+  {
     "courseNumber": "MD-4011",
     "title": "MD-4011: Enhance endpoint security with Microsoft Intune and Microsoft Security Copilot",
     "solutionArea": "Modern Work",
@@ -750,14 +742,6 @@
     "duration": "1 day",
     "credential": "N/A",
     "baseUrl": "https://learn.microsoft.com/training/courses/ms-4004"
-  },
-  {
-    "courseNumber": "MS-4007",
-    "title": "MS-4007: Microsoft 365 Copilot User Enablement Specialist",
-    "solutionArea": "Modern Work",
-    "duration": "1 day",
-    "credential": "N/A",
-    "baseUrl": "https://learn.microsoft.com/training/courses/ms-4007"
   },
   {
     "courseNumber": "MS-4010",
@@ -825,7 +809,7 @@
   },
   {
     "courseNumber": "MS-4023",
-    "title": "MS-4023: Transform Ideas into Action with Copilot Chat",
+    "title": "MS-4023: Transform Ideas into Action with Copilot Chat (Basic)",
     "solutionArea": "Modern Work",
     "duration": "3 hour",
     "credential": "N/A",
@@ -846,14 +830,6 @@
     "duration": "5 day",
     "credential": "Exam/Certification",
     "baseUrl": "https://learn.microsoft.com/training/courses/ms-721t00"
-  },
-  {
-    "courseNumber": "MS-900T01",
-    "title": "MS-900T01: Introduction to Microsoft 365",
-    "solutionArea": "Modern Work",
-    "duration": "1 day",
-    "credential": "Exam/Certification",
-    "baseUrl": "https://learn.microsoft.com/training/courses/ms-900t01"
   },
   {
     "courseNumber": "PL-200T00",
