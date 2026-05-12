@@ -9,9 +9,6 @@ permissions:
   pages: write
   id-token: write
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   generate:
     runs-on: self-hosted
@@ -21,7 +18,7 @@ jobs:
         shell: cmd
     steps:
       - name: Checkout main branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Generate achievement code
         env:
@@ -34,7 +31,7 @@ jobs:
 
       - name: Upload debug screenshots
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: debug-screenshots
           path: ${{ runner.temp }}/debug-*.png
