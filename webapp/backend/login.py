@@ -58,14 +58,38 @@ def _trigger_signin(page) -> None:
             continue
 
 
+def _dismiss_account_picker(page) -> None:
+    """If MS shows the 'pick an account' tile list (prompt=select_account),
+    click 'Use another account' so the email input is rendered."""
+    selectors = [
+        "#otherTile",
+        "div[role='button']:has-text('Use another account')",
+        "div[data-test-id='useAnotherAccount']",
+        "small:has-text('Use another account')",
+    ]
+    for sel in selectors:
+        try:
+            loc = page.locator(sel).first
+            if loc.count() and loc.is_visible():
+                loc.click(timeout=3000)
+                page.wait_for_timeout(2000)
+                return
+        except Exception:
+            continue
+
+
 def _fill_email(page, email: str) -> None:
     """Fill the email on the Microsoft login page and click Next."""
     email_input = page.locator("input[type='email'], input[name='loginfmt']").first
     try:
         email_input.wait_for(state="visible", timeout=8000)
     except Exception:
-        _trigger_signin(page)
-        email_input.wait_for(state="visible", timeout=15000)
+        _dismiss_account_picker(page)
+        try:
+            email_input.wait_for(state="visible", timeout=8000)
+        except Exception:
+            _trigger_signin(page)
+            email_input.wait_for(state="visible", timeout=15000)
     email_input.fill(email)
     email_input.press("Enter")
     page.wait_for_timeout(2000)
