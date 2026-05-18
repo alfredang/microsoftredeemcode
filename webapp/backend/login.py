@@ -16,9 +16,12 @@ import time
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 
-from .paths import STORAGE_STATE
+from .paths import ROOT, STORAGE_STATE
 
-load_dotenv()
+# Load webapp/.env explicitly so credentials resolve no matter the CWD
+# (the GitHub Actions runner invokes this from the repo root, not webapp/).
+load_dotenv(ROOT / ".env")
+load_dotenv()  # also honor a .env in CWD / real env vars as a fallback
 
 LOGIN_URL = "https://learn.microsoft.com/en-us/?source=docs"
 LEARN_DOMAIN = "learn.microsoft.com"
@@ -159,14 +162,31 @@ def _wait_for_authenticated(page, timeout_s: int = 30) -> bool:
     return False
 
 
-def run_login() -> dict:
+def run_login(
+    headless: bool = False,
+    allow_manual_wait: bool = True,
+    storage_path=None,
+) -> dict:
+    """Drive the full Microsoft sign-in and save the session.
+
+    headless:          run Chromium headless (set True for CI / Actions).
+    allow_manual_wait: if auto-login stalls (MFA/captcha), keep the window
+                       open 60s for a human to finish. Set False in CI where
+                       no human is present so failures surface immediately.
+    storage_path:      where to write the session JSON. Defaults to
+                       STORAGE_STATE. Pass an explicit path when the caller
+                       reads the session from a fixed location (e.g. the
+                       Actions runner uses the local clone, not its
+                       checked-out workspace copy).
+    """
+    out_path = str(storage_path) if storage_path else str(STORAGE_STATE)
     try:
         email, password = _get_credentials()
     except RuntimeError as err:
         return {"ok": False, "error": str(err)}
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=headless)
         context = browser.new_context(viewport={"width": 1280, "height": 800})
         page = context.new_page()
 
@@ -180,9 +200,10 @@ def run_login() -> dict:
             _handle_additional_prompts(page)
 
             if not _wait_for_authenticated(page, timeout_s=30):
-                # May need manual intervention (MFA, captcha, etc.)
-                # Wait longer with the window visible for user to complete.
-                page.wait_for_timeout(60000)
+                if allow_manual_wait:
+                    # May need manual intervention (MFA, captcha, etc.)
+                    # Wait longer with the window visible for user to complete.
+                    page.wait_for_timeout(60000)
                 if not _wait_for_authenticated(page, timeout_s=10):
                     browser.close()
                     return {
@@ -194,9 +215,10 @@ def run_login() -> dict:
                         ),
                     }
 
-            context.storage_state(path=str(STORAGE_STATE))
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            context.storage_state(path=out_path)
             browser.close()
-            return {"ok": True, "storage_state": str(STORAGE_STATE)}
+            return {"ok": True, "storage_state": out_path}
 
         except Exception as err:
             debug_info = ""

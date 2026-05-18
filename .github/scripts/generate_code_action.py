@@ -13,6 +13,7 @@ import base64
 import json
 import os
 import re
+import sys
 import time
 
 from playwright.sync_api import sync_playwright
@@ -80,6 +81,47 @@ def restore_session():
 
 
 # ---------------------------------------------------------------------------
+# Auto re-login when the saved session has expired
+# ---------------------------------------------------------------------------
+
+LOGIN_HOSTS = ("login.microsoftonline.com", "login.live.com", "login.windows.net")
+
+
+def is_signed_out(page):
+    """True if we got bounced to a Microsoft sign-in page."""
+    url = page.url.lower()
+    return any(host in url for host in LOGIN_HOSTS) or "/oauth2/" in url
+
+
+def refresh_session():
+    """Run the credential-based Microsoft login to rewrite storage_state.json.
+
+    Reuses webapp/backend/login.py (which reads MS_EMAIL/MS_PASSWORD from
+    webapp/.env on the self-hosted runner). Headless by default; override
+    with LOGIN_HEADLESS=0 if Microsoft blocks headless sign-in.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    webapp_dir = os.path.normpath(os.path.join(here, "..", "..", "webapp"))
+    if webapp_dir not in sys.path:
+        sys.path.insert(0, webapp_dir)
+
+    from backend.login import run_login  # noqa: E402
+
+    headless = os.environ.get("LOGIN_HEADLESS", "1").lower() not in ("0", "false", "no")
+    print(f"Session expired — running auto re-login (headless={headless})...")
+    # Write the refreshed session to the SAME path this script reads from,
+    # not login.py's workspace-relative default.
+    result = run_login(
+        headless=headless,
+        allow_manual_wait=False,
+        storage_path=STORAGE_STATE_PATH,
+    )
+    if not result.get("ok"):
+        raise RuntimeError(f"Auto re-login failed: {result.get('error')}")
+    print("Auto re-login succeeded; session refreshed.")
+
+
+# ---------------------------------------------------------------------------
 # Achievement Code Generation
 # ---------------------------------------------------------------------------
 
@@ -124,11 +166,13 @@ def find_request_button(page, timeout_s=30):
     return None
 
 
-def generate(page):
+def navigate_to_course(page):
     print(f"Navigating to course page: {COURSE_URL}")
     page.goto(COURSE_URL, wait_until="domcontentloaded")
     page.wait_for_timeout(5000)
 
+
+def generate(page):
     # Step 1: Find and click Request achievement code
     print("Step 1: Finding 'Request achievement code' button...")
     btn = find_request_button(page)
@@ -264,17 +308,41 @@ def main():
     print(f"Request {REQUEST_ID}: course={COURSE_NUMBER}, students={STUDENTS}")
 
     restore_session()
-    state_path = STORAGE_STATE_PATH if os.path.exists(STORAGE_STATE_PATH) else os.path.join(os.environ.get("TEMP", "/tmp"), "storage_state.json")
+
+    def state_file():
+        return (
+            STORAGE_STATE_PATH
+            if os.path.exists(STORAGE_STATE_PATH)
+            else os.path.join(os.environ.get("TEMP", "/tmp"), "storage_state.json")
+        )
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            storage_state=state_path,
-            viewport={"width": 1280, "height": 860},
-        )
-        page = context.new_page()
+        def open_page():
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(
+                storage_state=state_file(),
+                viewport={"width": 1280, "height": 860},
+            )
+            return browser, context.new_page()
+
+        browser, page = open_page()
 
         try:
+            navigate_to_course(page)
+
+            # Saved session may have expired — re-login once and retry.
+            if is_signed_out(page):
+                browser.close()
+                refresh_session()
+                browser, page = open_page()
+                navigate_to_course(page)
+                if is_signed_out(page):
+                    raise RuntimeError(
+                        "Still signed out after auto re-login. "
+                        "Check MS_EMAIL/MS_PASSWORD in webapp/.env, or an "
+                        "MFA/captcha challenge may require a manual sign-in."
+                    )
+
             code, url = generate(page)
             write_result(True, code=code, url=url)
         except Exception as err:
