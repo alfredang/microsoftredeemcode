@@ -27,6 +27,9 @@ jobs:
           STUDENTS: ${{ github.event.client_payload.students }}
           REQUEST_ID: ${{ github.event.client_payload.requestId }}
           STORAGE_STATE_PATH: C:/Users/ADMIN/Desktop/microsoftcert/webapp/data/storage_state.json
+          # Run auto re-login headed — matches the reliable local login and
+          # avoids Microsoft's headless bot-blocking (runner is an interactive desktop).
+          LOGIN_HEADLESS: "0"
         run: python .github/scripts/generate_code_action.py
 
       - name: Upload debug screenshots
